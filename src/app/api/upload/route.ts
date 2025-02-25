@@ -8,7 +8,7 @@ import pdf from 'pdf-parse';
 const DEFAULT_MODEL = "gpt-4o-mini";
 const DEFAULT_TEMPERATURE = 0;
 const DEFAULT_MAX_TOKENS = 4096;
-
+ 
 async function analyzeDocumentStructure(text: string, schema: z.ZodObject<any>, openai: OpenAI) {
   try {
     const instruction = `Extract and format the data according to the schema from this document text. Return only the JSON object with the extracted values.`;

@@ -26,7 +26,7 @@ DocuExtract AI is an intelligent document data extraction tool that uses AI to a
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/DocuExtract-AI.git
+git clone https://github.com/Bukareszt/DocuExtract.git
 cd DocuExtract-AI
 ```
 

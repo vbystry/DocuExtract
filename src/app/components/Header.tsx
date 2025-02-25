@@ -24,7 +24,7 @@ export default function Header() {
               New Extraction
             </Link>
             <a 
-              href="https://github.com/yourusername/docuextract-ai" 
+              href="https://github.com/Bukareszt/DocuExtract" 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1"
