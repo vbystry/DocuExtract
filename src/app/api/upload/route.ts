@@ -3,7 +3,7 @@ import { z } from 'zod';
 import OpenAI from 'openai';
 import { zodResponseFormat } from 'openai/helpers/zod';
 import officeparser from 'officeparser';
-import pdf from 'pdf-parse';
+import pdf from 'pdf-parse/lib/pdf-parse'
 
 const DEFAULT_MODEL = "gpt-4o-mini";
 const DEFAULT_TEMPERATURE = 0;

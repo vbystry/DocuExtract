@@ -24,7 +24,7 @@ export default function JsonViewer({ data, onValueHover }: JsonViewerProps) {
           onMouseEnter={() => onValueHover?.(value)}
           onMouseLeave={() => onValueHover?.('')}
         >
-          "{value}"
+          {value}
         </span>
       );
     }
