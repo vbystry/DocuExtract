@@ -10,19 +10,20 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      const fileExtension = file.name.split('.').pop()?.toLowerCase();
-      
-      if (fileExtension !== 'csv' && fileExtension !== 'docx') {
-        setError('Please upload a CSV or DOCX file');
-        return;
-      }
-      
-      setFile(file);
-      setError('');
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    const file = e.target.files[0];
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+    
+    if (fileExtension !== 'csv' && fileExtension !== 'docx') {
+      setError('Please select a CSV or DOCX file');
+      return;
     }
+    
+    // Process the file
+    setFile(file);
+    setError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,64 +69,62 @@ export default function Home() {
       <main className="container mx-auto px-4 py-12 max-w-4xl">
         <div className="bg-white rounded-2xl shadow-lg p-8">
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-800 mb-4">
-              CSV Data Transformation & Mapping
-            </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Upload your CSV files and visually map columns between them. 
-              Create powerful data transformations with AI assistance, 
-              and export your processed data in just a few clicks.
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
+              Transform your documents with AI
+            </h1>
+            <p className="mt-6 text-lg leading-8 text-gray-600">
+              Upload CSV spreadsheets or DOCX documents and use AI to extract, transform, and visualize your data.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* File Upload Section */}
-            <div className="space-y-4">
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8">
-                <input
-                  type="file"
-                  onChange={handleFileChange}
-                  accept=".csv,.docx"
-                  className="hidden"
-                  id="file-upload"
-                />
-                <label 
-                  htmlFor="file-upload"
-                  className="flex flex-col items-center justify-center cursor-pointer"
-                >
-                  <svg className="w-12 h-12 text-[#9966cc]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            <div className="flex items-center justify-center w-full">
+              <label htmlFor="document-upload" className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  <svg className="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                   </svg>
-                  <p className="mt-2 text-sm text-gray-600">Drop CSV file here or click to select</p>
-                </label>
-              </div>
-
-              {file && (
-                <div className="bg-purple-50 p-4 rounded-lg flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <svg className="w-6 h-6 text-[#9966cc]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <span className="text-sm text-gray-700">{file.name}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setFile(null)}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                  <p className="mb-2 text-sm text-gray-500">
+                    <span className="font-semibold">Click to upload</span> or drag and drop
+                  </p>
+                  <p className="text-xs text-gray-500">CSV or DOCX files supported</p>
                 </div>
-              )}
-
-              {error && (
-                <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">
-                  {error}
-                </div>
-              )}
+                <input
+                  id="document-upload"
+                  type="file"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                  accept=".csv,.docx"
+                />
+              </label>
             </div>
+
+            {file && (
+              <div className="bg-purple-50 p-4 rounded-lg flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <svg className="w-6 h-6 text-[#9966cc]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span className="text-sm text-gray-700">{file.name}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFile(null)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
+
+            {error && (
+              <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">
+                {error}
+              </div>
+            )}
 
             {/* Submit Button */}
             <button
@@ -157,12 +156,13 @@ export default function Home() {
               <div className="p-4">
                 <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mb-3">
                   <svg className="w-5 h-5 text-[#9966cc]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                   </svg>
                 </div>
-                <h4 className="text-lg font-medium text-gray-800 mb-1">Visual Editor</h4>
-                <p className="text-sm text-gray-600">Intuitive visual interface for transforming your data</p>
+                <h4 className="text-lg font-medium text-gray-800 mb-1">Multiple File Types</h4>
+                <p className="text-sm text-gray-600">
+                  Import data from CSV spreadsheets or content from DOCX documents for flexible workflows.
+                </p>
               </div>
               
               <div className="p-4">
