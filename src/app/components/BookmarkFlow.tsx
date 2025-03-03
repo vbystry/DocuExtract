@@ -16,6 +16,8 @@ import ReactFlow, {
   EdgeProps,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import TargetSchemaModal from './TargetSchemaModal';
+import { PlusCircle, Upload, Edit2 } from 'lucide-react';
 
 interface ColumnAnalysis {
   name: string;
@@ -44,6 +46,7 @@ interface BookmarkFlowProps {
   activeTab: 'source' | 'target';
   onTabChange: (tab: 'source' | 'target') => void;
   onTargetUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onTargetSchemaCreated: (schema: CSVAnalysis) => void;
 }
 
 export default function BookmarkFlow({
@@ -52,6 +55,7 @@ export default function BookmarkFlow({
   activeTab,
   onTabChange,
   onTargetUpload,
+  onTargetSchemaCreated,
 }: BookmarkFlowProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -760,6 +764,74 @@ export default function BookmarkFlow({
     // Don't clear all state so download can still work after closing
   };
 
+  // Update the target schema modal state
+  const [targetSchemaModalConfig, setTargetSchemaModalConfig] = useState({
+    isOpen: false,
+    mode: 'create' as 'create' | 'edit',
+    initialColumns: [{ name: '', type: 'string' }]
+  });
+
+  // Add a function to open the modal in edit mode
+  const openEditTargetSchema = () => {
+    if (!targetAnalysis) return;
+    
+    // Convert the current target analysis to the column definition format
+    const columns = targetAnalysis.columns.map(col => ({
+      name: col.name,
+      type: col.type
+    }));
+    
+    setTargetSchemaModalConfig({
+      isOpen: true,
+      mode: 'edit',
+      initialColumns: columns
+    });
+  };
+
+  // Update the function to open the modal in create mode
+  const openCreateTargetSchema = () => {
+    setTargetSchemaModalConfig({
+      isOpen: true,
+      mode: 'create',
+      initialColumns: [{ name: '', type: 'string' }]
+    });
+  };
+
+  // Close modal function
+  const closeTargetSchemaModal = () => {
+    setTargetSchemaModalConfig(prev => ({
+      ...prev,
+      isOpen: false
+    }));
+  };
+
+  // Update the function to handle both creating and editing
+  const handleCreateTargetSchema = (columns) => {
+    // Convert the column definitions to the CSVAnalysis format
+    const targetAnalysisData: CSVAnalysis = {
+      fileName: targetAnalysis ? targetAnalysis.fileName : 'custom-schema.csv',
+      totalRows: targetAnalysis ? targetAnalysis.totalRows : 0,
+      totalColumns: columns.length,
+      columns: columns.map(col => ({
+        name: col.name,
+        type: col.type,
+        sampleValues: targetAnalysis ? 
+          // Try to preserve existing sample values for columns that still exist
+          targetAnalysis.columns.find(c => c.name === col.name)?.sampleValues || [] : 
+          [],
+        uniqueValues: targetAnalysis ? 
+          targetAnalysis.columns.find(c => c.name === col.name)?.uniqueValues || 0 :
+          0,
+        emptyValues: targetAnalysis ? 
+          targetAnalysis.columns.find(c => c.name === col.name)?.emptyValues || 0 :
+          0
+      }))
+    };
+    
+    // Update the target analysis with our created/edited schema
+    onTargetSchemaCreated(targetAnalysisData);
+  };
+
   return (
     <div className="flex h-full w-full">
       {/* Left Panel - Bookmarks */}
@@ -775,19 +847,32 @@ export default function BookmarkFlow({
           >
             Source
           </button>
-          <button
-            className={`flex-1 py-3 text-sm font-medium ${
-              activeTab === 'target' 
-                ? 'text-blue-600 border-b-2 border-blue-600' 
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-            onClick={() => onTabChange('target')}
-          >
-            Target
-            {!targetAnalysis && (
-              <span className="ml-2 text-xs text-gray-400">(Not set)</span>
+          <div className="flex items-center">
+            <button
+              className={`flex-1 py-3 px-4 text-sm font-medium ${
+                activeTab === 'target' 
+                  ? 'text-blue-600 border-b-2 border-blue-600' 
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              onClick={() => onTabChange('target')}
+            >
+              Target
+              {!targetAnalysis && (
+                <span className="ml-2 text-xs text-gray-400">(Not set)</span>
+              )}
+            </button>
+            
+            {/* Add Edit button next to target tab when there's a target schema */}
+            {targetAnalysis && (
+              <button
+                onClick={openEditTargetSchema}
+                className="ml-1 p-1 rounded-full text-gray-500 hover:text-blue-600 hover:bg-blue-50"
+                title="Edit Target Schema"
+              >
+                <Edit2 size={16} />
+              </button>
             )}
-          </button>
+          </div>
         </div>
 
         {/* Column Buttons */}
@@ -795,22 +880,55 @@ export default function BookmarkFlow({
           {activeTab === 'source' 
             ? adaptedSourceAnalysis.columns.map(renderColumnButton)
             : targetAnalysis 
-              ? targetAnalysis.columns.map(renderColumnButton)
+              ? (
+                <>
+                  <div className="flex items-center justify-between p-3 border-b border-gray-100">
+                    <div className="text-sm font-medium text-gray-700">
+                      {targetAnalysis.columns.length} column{targetAnalysis.columns.length !== 1 ? 's' : ''}
+                    </div>
+                    <button
+                      onClick={openEditTargetSchema}
+                      className="flex items-center text-xs text-blue-600 hover:text-blue-800"
+                    >
+                      <Edit2 size={14} className="mr-1" />
+                      Edit Schema
+                    </button>
+                  </div>
+                  {targetAnalysis.columns.map(renderColumnButton)}
+                </>
+              )
               : (
-                <div className="p-4 text-center">
-                  <input
-                    type="file"
-                    onChange={onTargetUpload}
-                    accept=".csv"
-                    className="hidden"
-                    id="target-upload"
-                  />
-                  <label 
-                    htmlFor="target-upload"
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
-                  >
-                    Upload Target CSV
-                  </label>
+                <div className="p-4 flex flex-col items-center gap-4">
+                  <div className="text-center text-sm text-gray-600 mb-2">
+                    Create your target schema:
+                  </div>
+                  
+                  <div className="flex flex-col gap-3 w-full">
+                    <button
+                      onClick={openCreateTargetSchema}
+                      className="flex items-center justify-center gap-2 px-4 py-3 w-full border border-[#9966cc] rounded-md text-sm font-medium text-[#9966cc] bg-white hover:bg-purple-50"
+                    >
+                      <PlusCircle size={16} />
+                      Create Schema Manually
+                    </button>
+                    
+                    <div className="text-center text-sm text-gray-500">or</div>
+                    
+                    <label 
+                      htmlFor="target-upload"
+                      className="flex items-center justify-center gap-2 px-4 py-3 w-full border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
+                    >
+                      <Upload size={16} />
+                      Upload CSV File
+                    </label>
+                    <input
+                      type="file"
+                      onChange={onTargetUpload}
+                      accept=".csv"
+                      className="hidden"
+                      id="target-upload"
+                    />
+                  </div>
                 </div>
               )}
         </div>
@@ -1079,6 +1197,15 @@ export default function BookmarkFlow({
           </div>
         </div>
       )}
+
+      {/* Target Schema Modal */}
+      <TargetSchemaModal
+        isOpen={targetSchemaModalConfig.isOpen}
+        onClose={closeTargetSchemaModal}
+        onSave={handleCreateTargetSchema}
+        mode={targetSchemaModalConfig.mode}
+        initialColumns={targetSchemaModalConfig.initialColumns}
+      />
     </div>
   );
 } 

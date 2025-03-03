@@ -106,6 +106,11 @@ function EditorContent() {
     }
   };
 
+  const handleTargetSchemaCreated = (schema: CSVAnalysis) => {
+    setTargetAnalysis(schema);
+    setActiveTab('target');
+  };
+
   const handleDownloadDocument = () => {
     if (!sourceAnalysis || sourceAnalysis.fileType !== 'docx') return;
     
@@ -164,6 +169,7 @@ function EditorContent() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onTargetUpload={handleTargetUpload}
+        onTargetSchemaCreated={handleTargetSchemaCreated}
       />
     );
   };
