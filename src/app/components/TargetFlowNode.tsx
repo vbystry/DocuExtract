@@ -1,7 +1,7 @@
 'use client';
 
 import { Handle, Position } from 'reactflow';
-import { Target } from 'lucide-react';
+import { Target, X } from 'lucide-react';
 
 interface TargetNodeProps {
   id: string;
@@ -20,24 +20,35 @@ export default function TargetFlowNode({ id, data }: TargetNodeProps) {
     <div
       className="border rounded-md shadow-sm min-w-[200px] overflow-hidden"
       style={{ 
-        background: '#eff6ff',  // light blue (blue-50)
-        borderColor: '#bfdbfe',  // blue-200
+        background: '#f3e8ff',  // light purple (purple-100) - was blue-50
+        borderColor: '#d8b4fe',  // purple-300 - was blue-200
       }}
     >
-      {/* Header */}
-      <div className="p-2 border-b" style={{ borderColor: '#dbeafe' }}>
+      {/* Header with Delete Button */}
+      <div className="p-2 border-b" style={{ borderColor: '#e9d5ff' }}>
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-1.5">
-            <Target size={14} className="text-blue-600" />
-            <span className="font-medium text-sm text-blue-900 truncate max-w-[120px]">
+            <Target size={14} className="text-purple-600" />
+            <span className="font-medium text-sm text-purple-900 truncate max-w-[120px]">
               Target Schema
             </span>
           </div>
-          <div 
-            className="text-xs px-1.5 py-0.5 rounded"
-            style={{ background: '#dbeafe', color: '#1e40af' }}
-          >
-            Output
+          <div className="flex items-center">
+            <div 
+              className="text-xs px-1.5 py-0.5 rounded"
+              style={{ background: '#e9d5ff', color: '#7e22ce' }}
+            >
+              Output
+            </div>
+            <button 
+              className="ml-1 p-1 rounded-full text-red-500 hover:text-red-600 hover:bg-red-50"
+              onClick={() => {
+                const event = new CustomEvent('nodeRemove', { detail: { id } });
+                window.dispatchEvent(event);
+              }}
+            >
+              <X size={14} />
+            </button>
           </div>
         </div>
       </div>
@@ -45,17 +56,17 @@ export default function TargetFlowNode({ id, data }: TargetNodeProps) {
       {/* Content */}
       <div className="p-2">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-xs text-blue-800 font-medium">{data.name}</span>
+          <span className="text-xs text-purple-800 font-medium">{data.name}</span>
           <span 
             className="text-xs px-1.5 py-0.5 rounded"
-            style={{ background: '#dbeafe', color: '#1e40af' }}
+            style={{ background: '#e9d5ff', color: '#7e22ce' }}
           >
             {data.type}
           </span>
         </div>
         
         {(data.uniqueValues !== undefined && data.emptyValues !== undefined) && (
-          <div className="text-xs text-blue-700 mb-1">
+          <div className="text-xs text-purple-700 mb-1">
             {data.uniqueValues} unique • {data.emptyValues} empty
           </div>
         )}
@@ -73,7 +84,7 @@ export default function TargetFlowNode({ id, data }: TargetNodeProps) {
         type="target"
         position={Position.Left}
         className="w-3 h-3 rounded-full"
-        style={{ background: '#3b82f6' }}  // blue-500
+        style={{ background: '#a855f7' }}  // purple-500 - was blue-500
       />
     </div>
   );

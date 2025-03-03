@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import ReactFlow, {
   Node,
   Background,
@@ -159,7 +159,7 @@ export default function BookmarkFlow({
     setNodeCount((count) => count + 1);
   }, [nodeCount, setNodes, adaptedSourceAnalysis.fileName, targetAnalysis?.fileName]);
 
-  // Simple edge component with animation
+  // Update the AnimatedSVGEdge component to include both transform and remove buttons
   const AnimatedSVGEdge = ({
     id,
     source,
@@ -171,7 +171,14 @@ export default function BookmarkFlow({
     sourcePosition,
     targetPosition,
     style = {},
+    data,
   }: EdgeProps) => {
+    // Check for prompt in different ways to ensure it works
+    const savedPrompt = savedPrompts[target] || '';
+    const hasPrompt = !!savedPrompt || (data && data.hasPrompt);
+    
+    console.log(`Edge ${id}: target=${target}, hasPrompt=${hasPrompt}, savedPrompt=${!!savedPrompt}`);
+    
     const [edgePath] = getSmoothStepPath({
       sourceX,
       sourceY,
@@ -184,7 +191,7 @@ export default function BookmarkFlow({
     // Calculate the midpoint for button positioning
     const midX = (sourceX + targetX) / 2;
     const midY = (sourceY + targetY) / 2;
-
+    
     // Function to handle edge removal
     const handleRemoveEdge = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -192,6 +199,28 @@ export default function BookmarkFlow({
       
       // Remove the edge
       setEdges(eds => eds.filter(edge => edge.id !== id));
+    };
+    
+    // Function to open the transformation modal
+    const handleOpenTransform = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      
+      // Get the current prompt from the savedPrompts state
+      const currentPrompt = savedPrompts[target] || '';
+      
+      console.log('Opening transform for edge:', id, 'target:', target, 'current prompt:', currentPrompt);
+      
+      // First set the transforming node ID
+      setTransformingNodeId(target);
+      
+      // Then set the prompt value
+      setTransformPrompt(currentPrompt);
+      
+      // Clear any previous result message
+      setTransformResult(null);
+      
+      // Open the modal
+      setIsTransformModalOpen(true);
     };
 
     return (
@@ -219,33 +248,65 @@ export default function BookmarkFlow({
           />
         </circle>
 
-        {/* Remove button */}
+        {/* Edge controls with both buttons */}
         <foreignObject
-          width={60}
+          width={130}
           height={24}
-          x={midX - 30}
+          x={midX - 65}
           y={midY - 12}
           requiredExtensions="http://www.w3.org/1999/xhtml"
           style={{ overflow: 'visible' }}
         >
           <div 
             style={{
-              background: 'white',
-              borderRadius: '4px',
-              padding: '2px 6px',
-              fontSize: '10px',
-              color: '#dc2626',
-              border: '1px solid #fee2e2',
               display: 'flex',
-              alignItems: 'center',
+              gap: '4px',
               justifyContent: 'center',
-              cursor: 'pointer',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
             }}
-            onMouseDown={e => e.stopPropagation()}
-            onClick={handleRemoveEdge}
           >
-            Remove
+            {/* Transform button */}
+            <div 
+              style={{
+                background: hasPrompt ? '#f0f9ff' : 'white',
+                borderRadius: '4px',
+                padding: '2px 6px',
+                fontSize: '10px',
+                color: '#0284c7',
+                border: '1px solid #e0f2fe',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                width: '60px'
+              }}
+              onMouseDown={e => e.stopPropagation()}
+              onClick={handleOpenTransform}
+            >
+              {hasPrompt ? 'Edit AI' : 'Add AI'}
+            </div>
+            
+            {/* Remove button */}
+            <div 
+              style={{
+                background: 'white',
+                borderRadius: '4px',
+                padding: '2px 6px',
+                fontSize: '10px',
+                color: '#dc2626',
+                border: '1px solid #fee2e2',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                width: '50px'
+              }}
+              onMouseDown={e => e.stopPropagation()}
+              onClick={handleRemoveEdge}
+            >
+              Remove
+            </div>
           </div>
         </foreignObject>
       </>
@@ -358,53 +419,81 @@ export default function BookmarkFlow({
     }
   }, [addColumnToEditor, activeTab, edges, adaptedSourceAnalysis, sourceAnalysis]);
 
-  // Update the handleSavePrompt function to prevent saving empty prompts
+  // Add a function to close the transform modal
+  const closeTransformModal = () => {
+    setIsTransformModalOpen(false);
+    setTransformingNodeId(null);
+    setTransformPrompt('');
+    setTransformResult(null);
+  };
+
+  // Update the handleClearPrompt function to ensure it properly removes the prompt
+  const handleClearPrompt = () => {
+    if (!transformingNodeId) {
+      console.error('No node ID selected for clearing prompt');
+      return;
+    }
+    
+    console.log('Clearing prompt for node:', transformingNodeId);
+    
+    // Remove the prompt for this node with a direct state update
+    setSavedPrompts(prev => {
+      console.log('Previous saved prompts:', prev);
+      const newPrompts = { ...prev };
+      delete newPrompts[transformingNodeId];
+      console.log('New saved prompts after clearing:', newPrompts);
+      return newPrompts;
+    });
+    
+    // Reset all state related to the transform
+    setTransformPrompt('');
+    setTransformResult(null);
+    
+    // Force the edge UI to update immediately
+    setEdges(prevEdges => {
+      return prevEdges.map(edge => ({
+        ...edge,
+        data: {
+          ...edge.data,
+          hasPrompt: edge.target === transformingNodeId ? false : !!savedPrompts[edge.target],
+          promptTimestamp: Date.now()
+        }
+      }));
+    });
+    
+    // Close the modal
+    closeTransformModal();
+  };
+
+  // Also update the handleSavePrompt function to close the modal faster
   const handleSavePrompt = () => {
-    if (!transformingNodeId || !transformPrompt.trim()) {
-      // Show an error message if trying to save an empty prompt
+    if (!transformingNodeId) {
+      console.error('No transforming node ID set');
+      return;
+    }
+    
+    // Validate the prompt
+    if (!transformPrompt.trim()) {
       setTransformResult('Transformation prompt cannot be empty');
       return;
     }
     
-    console.log('Saving prompt for node:', transformingNodeId);
+    console.log('Saving prompt for node:', transformingNodeId, transformPrompt);
     
-    // Save the prompt for this node
-    setSavedPrompts(prev => ({
-      ...prev,
-      [transformingNodeId]: transformPrompt.trim()
-    }));
-    
-    // Show a brief success message
-    setTransformResult('Prompt saved successfully!');
-    
-    // Optionally close the modal after a delay
-    setTimeout(() => {
-      closeTransformModal();
-    }, 1500);
-  };
-
-  // Also add handling for the case where a user tries to clear a prompt
-  const handleClearPrompt = () => {
-    if (!transformingNodeId) return;
-    
-    // Remove the prompt for this node
+    // Update the savedPrompts state
     setSavedPrompts(prev => {
       const newPrompts = { ...prev };
-      delete newPrompts[transformingNodeId];
+      newPrompts[transformingNodeId] = transformPrompt.trim();
       return newPrompts;
     });
     
-    setTransformResult('Transformation removed');
+    // Show success message and close modal after a brief delay
+    setTransformResult('Prompt saved successfully!');
     
+    // Close modal quickly after saving
     setTimeout(() => {
       closeTransformModal();
-    }, 1500);
-  };
-
-  // Add a function to close the modal
-  const closeTransformModal = () => {
-    setIsTransformModalOpen(false);
-    setTransformingNodeId(null);
+    }, 500);
   };
 
   // Update the handleExecuteTransformations function for better state management
@@ -778,6 +867,71 @@ export default function BookmarkFlow({
     onTargetSchemaCreated(targetAnalysisData);
   };
 
+  // Add a handler for node removal
+  useEffect(() => {
+    const handleNodeRemove = (event: CustomEvent) => {
+      const nodeId = event.detail.id;
+      console.log('Removing node:', nodeId);
+      
+      // Remove the node
+      setNodes(nodes => nodes.filter(node => node.id !== nodeId));
+      
+      // Remove any connected edges
+      setEdges(edges => edges.filter(edge => 
+        edge.source !== nodeId && edge.target !== nodeId
+      ));
+      
+      // Clean up any saved prompts for edges connected to this node
+      setSavedPrompts(prev => {
+        const newPrompts = { ...prev };
+        
+        // If this was a target node, remove its prompt
+        if (nodeId in newPrompts) {
+          delete newPrompts[nodeId];
+        }
+        
+        return newPrompts;
+      });
+    };
+    
+    // Add event listener
+    window.addEventListener('nodeRemove', handleNodeRemove as EventListener);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('nodeRemove', handleNodeRemove as EventListener);
+    };
+  }, [setNodes, setEdges]);
+
+  // Add a function to update edges after prompt changes
+  const updateEdgesWithPromptState = useCallback(() => {
+    setEdges(prevEdges => {
+      return prevEdges.map(edge => ({
+        ...edge,
+        data: {
+          ...edge.data,
+          hasPrompt: !!savedPrompts[edge.target],
+          promptTimestamp: Date.now()
+        }
+      }));
+    });
+  }, [savedPrompts, setEdges]);
+
+  // Call this function after any prompt changes
+  useEffect(() => {
+    console.log('Saved prompts updated:', savedPrompts);
+    updateEdgesWithPromptState();
+  }, [savedPrompts, updateEdgesWithPromptState]);
+
+  // Add a useEffect hook to ensure the prompt is loaded when the modal opens
+  useEffect(() => {
+    if (isTransformModalOpen && transformingNodeId) {
+      const savedPrompt = savedPrompts[transformingNodeId] || '';
+      console.log('Modal opened, setting prompt to:', savedPrompt);
+      setTransformPrompt(savedPrompt);
+    }
+  }, [isTransformModalOpen, transformingNodeId, savedPrompts]);
+
   return (
     <div className="flex h-full w-full">
       {/* Left Panel - Bookmarks */}
@@ -922,60 +1076,72 @@ export default function BookmarkFlow({
       </div>
 
       {/* AI Transform Modal */}
-      {isTransformModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-[500px] max-w-full mx-4">
-            <div className="p-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium">Transform with AI</h3>
-            </div>
+      {isTransformModalOpen && transformingNodeId && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              AI Transformation
+            </h3>
             
-            <div className="p-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Prompt for AI transformation
-              </label>
+            <p className="text-sm text-gray-600 mb-4">
+              Enter a prompt for the AI to transform the source data into the target format.
+              {savedPrompts[transformingNodeId] && (
+                <span className="font-medium ml-1">
+                  (Editing existing prompt)
+                </span>
+              )}
+            </p>
+            
+            <div className="mb-4">
               <textarea
                 value={transformPrompt}
                 onChange={(e) => setTransformPrompt(e.target.value)}
-                className="w-full h-24 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#9966cc]"
-                placeholder="Add instructions to transfor by AI..."
+                className="w-full p-2 border border-gray-300 rounded-md h-32 text-sm"
+                placeholder="Example: Extract the first name from the full name"
               />
-              
-              {transformResult && (
-                <div className="mt-4 p-3 bg-gray-50 rounded-md">
-                  <div className="text-sm font-medium text-gray-700 mb-1">Result</div>
-                  <div className="text-sm text-gray-600">{transformResult}</div>
-                </div>
-              )}
             </div>
             
-            <div className="p-4 border-t border-gray-200 flex justify-end space-x-3">
+            {transformResult && (
+              <div className="mb-4 p-2 text-sm border rounded-md bg-blue-50 text-blue-800 flex items-center justify-between">
+                <span>{transformResult}</span>
+                {transformResult === 'Prompt saved successfully!' && (
+                  <span className="text-xs text-blue-600">
+                    You can continue editing or press Done when finished
+                  </span>
+                )}
+              </div>
+            )}
+            
+            <div className="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-3 sm:gap-3">
               <button
+                type="button"
+                className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 col-span-1"
                 onClick={closeTransformModal}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
               >
-                Cancel
+                {transformResult === 'Prompt saved successfully!' ? 'Done' : 'Cancel'}
               </button>
               
-              {/* Show Clear button only when editing an existing prompt */}
-              {savedPrompts[transformingNodeId!] && (
+              {/* Show Clear button when editing an existing prompt */}
+              {savedPrompts[transformingNodeId] && (
                 <button
+                  type="button"
+                  className="inline-flex justify-center w-full rounded-md border border-red-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-red-700 hover:bg-red-50 col-span-1"
                   onClick={handleClearPrompt}
-                  className="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-md hover:bg-red-100"
                 >
                   Clear
                 </button>
               )}
               
               <button
+                type="button"
+                className={`inline-flex justify-center w-full rounded-md border border-transparent shadow-sm px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 ${savedPrompts[transformingNodeId] ? 'col-span-1' : 'col-span-2'}`}
+                style={{ 
+                  backgroundColor: '#3b82f6'
+                }}
                 onClick={handleSavePrompt}
-                disabled={!transformPrompt.trim()}
-                className={`px-4 py-2 text-sm font-medium text-white rounded-md ${
-                  !transformPrompt.trim()
-                    ? 'bg-[#b599e2] cursor-not-allowed'
-                    : 'bg-[#9966cc] hover:bg-[#8a5bbf]'
-                }`}
+                disabled={isTransforming}
               >
-                Accept
+                {isTransforming ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>

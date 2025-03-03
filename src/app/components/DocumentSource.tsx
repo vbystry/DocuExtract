@@ -19,43 +19,33 @@ export default function DocumentSource({ fileName, content, onSelect }: Document
   
   return (
     <div 
-      className="w-full border rounded-md mb-2 overflow-hidden bg-purple-50 hover:bg-purple-100 transition-colors"
+      className="w-full border rounded-md mb-2 overflow-hidden bg-blue-50 hover:bg-blue-100 transition-colors"
     >
       <div 
         className="p-3 cursor-pointer"
-        onClick={onSelect}
+        onClick={() => onSelect && onSelect()}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <FileText size={18} className="text-purple-600" />
-            <span className="font-medium text-purple-900">{fileName}</span>
+            <FileText size={18} className="text-blue-600" />
+            <span className="font-medium text-blue-900">{fileName}</span>
           </div>
-          <div className="text-xs bg-purple-200 text-purple-800 px-2 py-0.5 rounded">
+          <div className="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded">
             DOCX
           </div>
         </div>
       </div>
       
-      <div className="border-t border-purple-200">
+      <div className="border-t border-blue-200">
         <button
-          className="w-full p-2 text-xs flex items-center justify-center text-purple-700 hover:bg-purple-200"
+          className="w-full p-2 text-xs flex items-center justify-center text-blue-700 hover:bg-blue-200"
           onClick={() => setIsPreviewOpen(!isPreviewOpen)}
         >
-          {isPreviewOpen ? (
-            <>
-              <ChevronUp size={14} className="mr-1" />
-              Hide Preview
-            </>
-          ) : (
-            <>
-              <ChevronDown size={14} className="mr-1" />
-              Show Preview
-            </>
-          )}
+          {isPreviewOpen ? 'Hide Preview' : 'Show Preview'}
         </button>
         
         {isPreviewOpen && (
-          <div className="p-3 bg-white border-t border-purple-200 text-sm whitespace-pre-wrap">
+          <div className="p-3 bg-white border-t border-blue-200 text-sm whitespace-pre-wrap">
             {contentPreview}
           </div>
         )}
