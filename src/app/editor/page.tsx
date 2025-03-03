@@ -18,6 +18,7 @@ interface CSVAnalysis {
   totalRows: number;
   totalColumns: number;
   columns: ColumnAnalysis[];
+  fileType: string;
 }
 
 interface DocxAnalysis {

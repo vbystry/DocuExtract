@@ -36,6 +36,7 @@ interface CSVAnalysis {
   fileName: string;
   totalRows: number;
   totalColumns: number;
+  fileType: string;
   columns: ColumnAnalysis[];
 }
 
@@ -128,7 +129,8 @@ export default function BookmarkFlow({
       fileName: docxData.fileName,
       totalRows: 1,
       totalColumns: docxColumns.length,
-      columns: docxColumns
+      columns: docxColumns,
+      fileType: 'docx'
     };
   };
 
@@ -847,6 +849,7 @@ export default function BookmarkFlow({
       fileName: targetAnalysis ? targetAnalysis.fileName : 'custom-schema.csv',
       totalRows: targetAnalysis ? targetAnalysis.totalRows : 0,
       totalColumns: columns.length,
+      fileType: 'csv',
       columns: columns.map(col => ({
         name: col.name,
         type: col.type,
