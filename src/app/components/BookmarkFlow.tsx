@@ -18,6 +18,11 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import TargetSchemaModal from './TargetSchemaModal';
 import { PlusCircle, Upload, Edit2 } from 'lucide-react';
+import SpreadsheetSource from './SpreadsheetSource';
+import DocumentSource from './DocumentSource';
+import DocumentFlowNode from './DocumentFlowNode';
+import SpreadsheetFlowNode from './SpreadsheetFlowNode';
+import TargetFlowNode from './TargetFlowNode';
 
 interface ColumnAnalysis {
   name: string;
@@ -139,6 +144,9 @@ export default function BookmarkFlow({
       data: { 
         ...column,
         isSource,
+        fileName: isSource 
+          ? adaptedSourceAnalysis.fileName 
+          : (targetAnalysis?.fileName || 'Target Schema')
       },
       position: { 
         x: isSource ? 100 : 400,  
@@ -147,13 +155,9 @@ export default function BookmarkFlow({
       draggable: true,
     };
 
-    setNodes((nds) => {
-      const updatedNodes = [...nds, newNode];
-      console.log('Updated nodes:', updatedNodes);
-      return updatedNodes;
-    });
+    setNodes((nds) => [...nds, newNode]);
     setNodeCount((count) => count + 1);
-  }, [nodeCount, setNodes]);
+  }, [nodeCount, setNodes, adaptedSourceAnalysis.fileName, targetAnalysis?.fileName]);
 
   // Simple edge component with animation
   const AnimatedSVGEdge = ({
@@ -249,126 +253,25 @@ export default function BookmarkFlow({
   };
 
   // Define the node component (but don't create the nodeTypes object yet)
-  const ColumnNodeComponent = useCallback(({ data, id }: { data: ColumnAnalysis & { isSource: boolean }, id: string }) => {
-    const connectedNodesCount = edges.filter(edge => 
-      (data.isSource && edge.source === id) || (!data.isSource && edge.target === id)
-    ).length;
+  function ColumnNode({ id, data }: { id: string; data: any }) {
+    // Determine which component to render based on the data
+    if (!data.isSource) {
+      // Target nodes always use the blue target component
+      return <TargetFlowNode id={id} data={data} />;
+    }
     
-    // Function to handle node removal with improved debugging
-    const handleRemoveNode = () => {
-      console.log('Removing node with ID:', id);
-      
-      // First get all connected edges for logging
-      const connectedEdges = edges.filter(edge => 
-        edge.source === id || edge.target === id
-      );
-      console.log('Connected edges to remove:', connectedEdges);
-      
-      // Remove all connected edges first
-      setEdges(prevEdges => {
-        const newEdges = prevEdges.filter(edge => 
-          edge.source !== id && edge.target !== id
-        );
-        console.log('Edges after filtering:', newEdges);
-        return newEdges;
-      });
-      
-      // Then remove the node
-      setNodes(prevNodes => {
-        const newNodes = prevNodes.filter(node => node.id !== id);
-        console.log('Nodes after filtering:', newNodes);
-        return newNodes;
-      });
-    };
-    
-    // Function to handle AI transformation
-    const handleTransformNode = () => {
-      console.log('Opening transform modal for node:', id);
-      setTransformingNodeId(id);
-      
-      // Check if there's already a saved prompt for this node
-      if (savedPrompts[id]) {
-        // If editing an existing prompt, populate the textarea with the saved prompt
-        setTransformPrompt(savedPrompts[id]);
-      } else {
-        // Otherwise start with an empty prompt
-        setTransformPrompt('');
-      }
-      
-      setTransformResult(null); // Reset any previous results
-      setIsTransformModalOpen(true);
-    };
-    
-    // Check if this node has a saved prompt
-    const hasPrompt = !!savedPrompts[id];
-    
-    return (
-      <div className="px-4 py-2 shadow-md rounded-md bg-white border border-gray-200 min-w-[180px]">
-        <Handle 
-          type={data.isSource ? "source" : "target"} 
-          position={data.isSource ? Position.Right : Position.Left} 
-          style={{ background: '#3b82f6' }}
-        />
-        
-        <div className="flex flex-col">
-          <div className="font-medium text-sm text-gray-800">{data.name}</div>
-          <div className="text-xs text-gray-500">{data.type}</div>
-          <div className="text-xs text-gray-400 mt-1">
-            {data.uniqueValues} unique • {data.emptyValues} empty
-          </div>
-          
-          {connectedNodesCount > 0 && (
-            <div className="mt-2 border-t pt-2 border-gray-100">
-              <div className="text-xs text-gray-600">
-                {connectedNodesCount} connection{connectedNodesCount > 1 ? 's' : ''}
-              </div>
-            </div>
-          )}
-          
-          {/* Show action buttons for all nodes */}
-          <div 
-            className="mt-2 pt-2 border-t border-gray-100 flex flex-col gap-1"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* For target nodes, show transformation buttons */}
-            {!data.isSource && (
-              <div 
-                className={`text-xs py-1 px-2 rounded transition-colors cursor-pointer ${
-                  hasPrompt 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'bg-[#9966cc] text-white hover:bg-[#8a5bbf]'
-                }`}
-                onMouseDown={e => e.stopPropagation()} 
-                onClick={e => {
-                  e.stopPropagation();
-                  handleTransformNode();
-                }}
-              >
-                {hasPrompt ? 'Edit Transformation' : 'Transform with AI'}
-              </div>
-            )}
-            
-            {/* Remove button for all nodes */}
-            <div 
-              className="text-xs py-1 px-2 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors cursor-pointer"
-              onMouseDown={e => e.stopPropagation()}
-              onClick={e => {
-                e.stopPropagation();
-                handleRemoveNode();
-              }}
-            >
-              Remove
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }, [edges, setEdges, setNodes, setTransformingNodeId, setIsTransformModalOpen, setTransformPrompt, savedPrompts]);
+    // For source nodes, check if it's a document or spreadsheet
+    if (data.name === 'Document Content') {
+      return <DocumentFlowNode id={id} data={data} />;
+    } else {
+      return <SpreadsheetFlowNode id={id} data={data} />;
+    }
+  }
 
   // Now memoize the nodeTypes and edgeTypes objects
   const nodeTypes = useMemo(() => ({
-    columnNode: ColumnNodeComponent,
-  }), [ColumnNodeComponent]);
+    columnNode: ColumnNode,
+  }), []);
 
   const edgeTypes = useMemo(() => ({
     transform: AnimatedSVGEdge,
@@ -393,24 +296,67 @@ export default function BookmarkFlow({
     [setEdges]
   );
 
-  // Render column button in the bookmark panel
-  const renderColumnButton = (column: ColumnAnalysis) => (
-    <button
-      key={column.name}
-      onClick={() => addColumnToEditor(column, activeTab === 'source')}
-      className="w-full p-3 text-left hover:bg-gray-50 border-b border-gray-100 transition-colors"
-    >
-      <div className="flex items-center justify-between mb-1">
-        <span className="font-medium text-sm text-gray-800">{column.name}</span>
-        <span className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-full">
-          {column.type}
-        </span>
-      </div>
-      <div className="text-xs text-gray-500">
-        {column.uniqueValues} unique • {column.emptyValues} empty
-      </div>
-    </button>
-  );
+  // Render column button
+  const renderColumnButton = useCallback((column: ColumnAnalysis, index: number) => {
+    const isSource = activeTab === 'source';
+    
+    if (isSource) {
+      // Check if this is from a DOCX file (we can detect this by checking for a specific column name)
+      const isDocx = adaptedSourceAnalysis.columns.length === 1 && 
+                    adaptedSourceAnalysis.columns[0].name === 'Document Content';
+      
+      if (isDocx) {
+        // Get the original source data
+        const docxSource = sourceAnalysis as DocxAnalysis;
+        
+        return (
+          <DocumentSource
+            key={column.name}
+            fileName={docxSource.fileName}
+            content={docxSource.content}
+            onSelect={() => addColumnToEditor(column, true)}
+          />
+        );
+      } else {
+        // This is a CSV/Excel source
+        return (
+          <SpreadsheetSource
+            key={column.name}
+            fileName={adaptedSourceAnalysis.fileName}
+            column={column}
+            onSelect={() => addColumnToEditor(column, true)}
+          />
+        );
+      }
+    } else {
+      // For target columns, we'll keep the current button style
+      // but we'll enhance it with the visual indicator for connections
+      const nodeIdentifier = `target-${column.name}-${index}`;
+      const isConnected = edges.some(edge => edge.target === nodeIdentifier);
+      
+      return (
+        <div 
+          key={column.name} 
+          className={`p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${isConnected ? 'bg-blue-50' : ''}`}
+          onClick={() => addColumnToEditor(column, false)}
+        >
+          <div className="flex items-center justify-between mb-1">
+            <span className="font-medium text-sm text-gray-800">{column.name}</span>
+            <span className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-full">
+              {column.type}
+            </span>
+          </div>
+          <div className="text-xs text-gray-500">
+            {isConnected ? (
+              <span className="text-blue-600">Connected</span>
+            ) : (
+              `${column.uniqueValues} unique • ${column.emptyValues} empty`
+            )}
+          </div>
+        </div>
+      );
+    }
+  }, [addColumnToEditor, activeTab, edges, adaptedSourceAnalysis, sourceAnalysis]);
 
   // Update the handleSavePrompt function to prevent saving empty prompts
   const handleSavePrompt = () => {
