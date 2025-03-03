@@ -20,6 +20,12 @@ interface CSVAnalysis {
   columns: ColumnAnalysis[];
 }
 
+interface DocxAnalysis {
+  fileName: string;
+  content: string;
+  fileType: string;
+}
+
 // Main component with Suspense boundary
 export default function EditorPageWrapper() {
   return (
@@ -54,7 +60,7 @@ export default function EditorPageWrapper() {
 
 // Content component that uses hooks requiring Suspense
 function EditorContent() {
-  const [sourceAnalysis, setSourceAnalysis] = useState<CSVAnalysis | null>(null);
+  const [sourceAnalysis, setSourceAnalysis] = useState<CSVAnalysis | DocxAnalysis | null>(null);
   const [targetAnalysis, setTargetAnalysis] = useState<CSVAnalysis | null>(null);
   const [activeTab, setActiveTab] = useState<'source' | 'target'>('source');
   const searchParams = useSearchParams();
@@ -100,6 +106,68 @@ function EditorContent() {
     }
   };
 
+  const handleDownloadDocument = () => {
+    if (!sourceAnalysis || sourceAnalysis.fileType !== 'docx') return;
+    
+    const docx = sourceAnalysis as DocxAnalysis;
+    
+    // Create a download link for the full text content
+    const blob = new Blob([docx.content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${docx.fileName.split('.')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Add a check for the file type before rendering components
+  const renderAnalysisComponent = () => {
+    if (!sourceAnalysis) return null;
+    
+    // Check if the data is from a DOCX file
+    if ('fileType' in sourceAnalysis && sourceAnalysis.fileType === 'docx') {
+      const docx = sourceAnalysis as DocxAnalysis;
+      
+      return (
+        <div className="p-6 bg-white rounded-lg shadow">
+          <h2 className="text-xl font-bold mb-4">Document Content</h2>
+          <div className="mb-4">
+            <p className="font-medium">File: {docx.fileName}</p>
+          </div>
+          
+          <h3 className="text-lg font-semibold mt-6 mb-2">Document Text</h3>
+          <div className="bg-gray-50 p-4 rounded-md overflow-auto max-h-[60vh] whitespace-pre-wrap">
+            {docx.content}
+          </div>
+          
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold mb-2">Actions</h3>
+            <button
+              className="px-4 py-2 bg-[#9966cc] text-white rounded hover:bg-[#8a5bbf]"
+              onClick={handleDownloadDocument}
+            >
+              Download Document
+            </button>
+          </div>
+        </div>
+      );
+    }
+    
+    // For CSV files, render the regular BookmarkFlow component
+    return (
+      <BookmarkFlow
+        sourceAnalysis={sourceAnalysis}
+        targetAnalysis={targetAnalysis}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onTargetUpload={handleTargetUpload}
+      />
+    );
+  };
+
   if (!sourceAnalysis) {
     return (
       <div className="h-full w-full flex items-center justify-center">
@@ -108,13 +176,6 @@ function EditorContent() {
     );
   }
 
-  return (
-    <BookmarkFlow
-      sourceAnalysis={sourceAnalysis}
-      targetAnalysis={targetAnalysis}
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
-      onTargetUpload={handleTargetUpload}
-    />
-  );
+  // Return the appropriate component based on file type
+  return renderAnalysisComponent();
 } 

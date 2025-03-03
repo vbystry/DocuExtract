@@ -11,13 +11,17 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile && selectedFile.name.endsWith('.csv')) {
-      setFile(selectedFile);
-      setError(null);
-    } else {
-      setFile(null);
-      setError('Please select a CSV file');
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      const fileExtension = file.name.split('.').pop()?.toLowerCase();
+      
+      if (fileExtension !== 'csv' && fileExtension !== 'docx') {
+        setError('Please upload a CSV or DOCX file');
+        return;
+      }
+      
+      setFile(file);
+      setError('');
     }
   };
 
@@ -81,7 +85,7 @@ export default function Home() {
                 <input
                   type="file"
                   onChange={handleFileChange}
-                  accept=".csv"
+                  accept=".csv,.docx"
                   className="hidden"
                   id="file-upload"
                 />
@@ -191,7 +195,11 @@ export default function Home() {
           <div className="bg-white rounded-lg p-6 shadow-xl">
             <div className="flex items-center space-x-4">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#9966cc]"></div>
-              <p className="text-gray-700">Analyzing CSV data...</p>
+              <p className="text-gray-700">
+                {file?.name.toLowerCase().endsWith('.docx') 
+                  ? 'Analyzing document...' 
+                  : 'Analyzing CSV data...'}
+              </p>
             </div>
           </div>
         </div>

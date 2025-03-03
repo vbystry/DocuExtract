@@ -32,8 +32,14 @@ interface CSVAnalysis {
   columns: ColumnAnalysis[];
 }
 
+interface DocxAnalysis {
+  fileName: string;
+  content: string;
+  fileType: string;
+}
+
 interface BookmarkFlowProps {
-  sourceAnalysis: CSVAnalysis;
+  sourceAnalysis: CSVAnalysis | DocxAnalysis;
   targetAnalysis: CSVAnalysis | null;
   activeTab: 'source' | 'target';
   onTabChange: (tab: 'source' | 'target') => void;
@@ -87,6 +93,40 @@ export default function BookmarkFlow({
     // Basic validation - OpenAI keys typically start with "sk-" and are longer than 20 chars
     return key.trim().startsWith('sk-') && key.trim().length > 20;
   };
+
+  // Update the DocxAnalysis interface
+  interface DocxAnalysis {
+    fileName: string;
+    content: string;
+    fileType: string;
+  }
+
+  // Update the adapter function for DocxAnalysis
+  const adaptDocxToColumnarFormat = (docxData: DocxAnalysis): CSVAnalysis => {
+    // Create a single column for the entire document content
+    const docxColumns: ColumnAnalysis[] = [
+      {
+        name: 'Document Content',
+        type: 'string',
+        // Just use the first 100 characters as a preview
+        sampleValues: [docxData.content.substring(0, 100) + (docxData.content.length > 100 ? '...' : '')],
+        uniqueValues: 1,
+        emptyValues: 0
+      }
+    ];
+
+    return {
+      fileName: docxData.fileName,
+      totalRows: 1,
+      totalColumns: docxColumns.length,
+      columns: docxColumns
+    };
+  };
+
+  // At the beginning of the component, adapt DOCX data if needed
+  const adaptedSourceAnalysis = ('content' in sourceAnalysis) 
+    ? adaptDocxToColumnarFormat(sourceAnalysis as DocxAnalysis) 
+    : sourceAnalysis as CSVAnalysis;
 
   const addColumnToEditor = useCallback((column: ColumnAnalysis, isSource: boolean) => {
     const newNode: Node = {
@@ -503,7 +543,7 @@ export default function BookmarkFlow({
     try {
       // 1. Get source data (assuming we have access to it)
       // In a real app, you might need to fetch this from state or storage
-      const sourceData = sourceAnalysis;
+      const sourceData = adaptedSourceAnalysis;
       
       // 2. Prepare transformation plan
       const transformations = edges.map(edge => {
@@ -515,7 +555,7 @@ export default function BookmarkFlow({
           source: {
             id: edge.source,
             name: sourceNode?.data?.name,
-            columnIndex: sourceAnalysis.columns.findIndex(c => c.name === sourceNode?.data?.name),
+            columnIndex: sourceData.columns.findIndex(c => c.name === sourceNode?.data?.name),
           },
           target: {
             id: edge.target,
@@ -553,7 +593,7 @@ export default function BookmarkFlow({
         }
         
         // Get source values (in real app, this would be the actual data from CSV)
-        const sourceValues = sourceAnalysis.columns[sourceColumnIndex].sampleValues;
+        const sourceValues = sourceData.columns[sourceColumnIndex].sampleValues;
         
         // Apply transformation - either AI or direct copy
         let transformedValues : any[] = [];
@@ -753,7 +793,7 @@ export default function BookmarkFlow({
         {/* Column Buttons */}
         <div className="flex-1 overflow-y-auto">
           {activeTab === 'source' 
-            ? sourceAnalysis.columns.map(renderColumnButton)
+            ? adaptedSourceAnalysis.columns.map(renderColumnButton)
             : targetAnalysis 
               ? targetAnalysis.columns.map(renderColumnButton)
               : (
