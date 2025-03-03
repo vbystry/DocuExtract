@@ -110,15 +110,15 @@ export default function BookmarkFlow({
     fileType: string;
   }
 
-  // Update the adapter function for DocxAnalysis
+  // Update the adapter function for DocxAnalysis to use full document content
   const adaptDocxToColumnarFormat = (docxData: DocxAnalysis): CSVAnalysis => {
     // Create a single column for the entire document content
     const docxColumns: ColumnAnalysis[] = [
       {
         name: 'Document Content',
         type: 'string',
-        // Just use the first 100 characters as a preview
-        sampleValues: [docxData.content.substring(0, 100) + (docxData.content.length > 100 ? '...' : '')],
+        // Include the complete document content, not just a preview
+        sampleValues: [docxData.content],
         uniqueValues: 1,
         emptyValues: 0
       }
