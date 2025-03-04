@@ -60,7 +60,7 @@ async function transformWithAI(values, prompt, apiKey) {
     return values; // Direct copy without transformation
   }
 
-  const transformed = [];
+  const transformed: string[] = [];
   
   // Process in small batches to avoid rate limits
   const batchSize = 5;

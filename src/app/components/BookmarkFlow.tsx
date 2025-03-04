@@ -637,7 +637,7 @@ export default function BookmarkFlow({
         }
         
         // Get source values - first try to get from localStorage
-        let sourceValues = [];
+        let sourceValues : string[] = [];
         
         if (sourceData.datasetId) {
           try {
@@ -657,7 +657,7 @@ export default function BookmarkFlow({
         }
         
         // Apply transformation - either AI or direct copy
-        let transformedValues = [];
+        let transformedValues : string[] = [];
         
         try {
           const response = await fetch('/api/transform-dataset', {
