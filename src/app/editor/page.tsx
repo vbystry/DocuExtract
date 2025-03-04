@@ -19,6 +19,8 @@ interface CSVAnalysis {
   totalColumns: number;
   columns: ColumnAnalysis[];
   fileType: string;
+  datasetId: string;
+  fullData?: Record<string, string[]>;
 }
 
 interface DocxAnalysis {
@@ -128,6 +130,24 @@ function EditorContent() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+
+  // After successful file upload, store the full data in localStorage
+  useEffect(() => {
+    if (sourceAnalysis && 'fullData' in sourceAnalysis) {
+      // Store the full CSV data in localStorage
+      try {
+        localStorage.setItem(
+          `csvData_${sourceAnalysis.analysis.datasetId}`, 
+          JSON.stringify(sourceAnalysis.fullData)
+        );
+        
+        // Remove the fullData from the analysis to keep it light
+        delete sourceAnalysis.fullData;
+      } catch (error) {
+        console.error('Error storing CSV data in localStorage:', error);
+      }
+    }
+  }, [sourceAnalysis]);
 
   // Add a check for the file type before rendering components
   const renderAnalysisComponent = () => {

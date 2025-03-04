@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parse } from 'csv-parse/sync';
 import mammoth from 'mammoth';
+import Redis from 'ioredis';
+import { v4 as uuidv4 } from 'uuid';
+
+// Initialize Redis client
+const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,6 +64,23 @@ async function processCSVFile(file: File, fileName: string) {
   const headers = rows[0];
   const dataRows = rows.slice(1);
   
+  // Generate a unique ID for this dataset
+  const datasetId = uuidv4();
+  
+  // Store full column data in Redis
+  const fullData = {};
+  headers.forEach((header, index) => {
+    fullData[header] = dataRows.map(row => row[index] || '');
+  });
+  
+  // Store data in Redis with 24 hour expiration
+  await redis.set(
+    `csv:${datasetId}`, 
+    JSON.stringify(fullData), 
+    'EX', 
+    86400 // 24 hours in seconds
+  );
+  
   // Analyze columns
   const columns = headers.map((header, index) => {
     const values = dataRows.map(row => row[index] || '');
@@ -68,7 +90,7 @@ async function processCSVFile(file: File, fileName: string) {
     return {
       name: header,
       type: detectColumnType(values),
-      sampleValues: values.slice(0, 5),
+      sampleValues: values.slice(0, 5), // Send only a few samples to frontend
       uniqueValues,
       emptyValues,
     };
@@ -82,7 +104,8 @@ async function processCSVFile(file: File, fileName: string) {
       totalRows: dataRows.length,
       totalColumns: headers.length,
       columns,
-    } 
+      datasetId, // Include the dataset ID for later retrieval
+    }
   });
 }
 

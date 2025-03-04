@@ -27,7 +27,8 @@ import TargetFlowNode from './TargetFlowNode';
 interface ColumnAnalysis {
   name: string;
   type: string;
-  sampleValues: string[];
+  sampleValues: string[]; // For UI display
+  allValues: string[];    // Full dataset
   uniqueValues: number;
   emptyValues: number;
 }
@@ -38,6 +39,7 @@ interface CSVAnalysis {
   totalColumns: number;
   fileType: string;
   columns: ColumnAnalysis[];
+  datasetId?: string;
 }
 
 interface DocxAnalysis {
@@ -120,6 +122,7 @@ export default function BookmarkFlow({
         type: 'string',
         // Include the complete document content, not just a preview
         sampleValues: [docxData.content],
+        allValues: [docxData.content],
         uniqueValues: 1,
         emptyValues: 0
       }
@@ -556,7 +559,7 @@ export default function BookmarkFlow({
   };
 
 
-  // Update the final transform function to handle real transformations
+  // Update the final transform function to retrieve full values from localStorage
   const handleFinalTransform = async () => {
     // Reset success/error states when starting a new transformation
     setFinalTransformSuccess(null);
@@ -633,18 +636,55 @@ export default function BookmarkFlow({
           throw new Error(`Source column not found: ${transform.source.name}`);
         }
         
-        // Get source values (in real app, this would be the actual data from CSV)
-        const sourceValues = sourceData.columns[sourceColumnIndex].sampleValues;
+        // Get source values - first try to get from localStorage
+        let sourceValues = [];
+        
+        if (sourceData.datasetId) {
+          try {
+            const storedData = localStorage.getItem(`csvData_${sourceData.datasetId}`);
+            if (storedData) {
+              const parsedData = JSON.parse(storedData);
+              sourceValues = parsedData[sourceColumnName] || [];
+            }
+          } catch (error) {
+            console.error('Error retrieving data from localStorage:', error);
+          }
+        }
+        
+        // Fall back to sample values if localStorage data is not available
+        if (!sourceValues.length) {
+          sourceValues = sourceData.columns[sourceColumnIndex].sampleValues;
+        }
         
         // Apply transformation - either AI or direct copy
-        let transformedValues : any[] = [];
+        let transformedValues = [];
         
-        if (transform.prompt) {
-          // With AI transformation using OpenAI
-          transformedValues = await processWithAI(sourceValues, transform.prompt, openAIKey);
-        } else {
-          // Simple direct copy
-          transformedValues = [...sourceValues];
+        try {
+          const response = await fetch('/api/transform-dataset', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              datasetId: sourceData.datasetId,
+              columnName: sourceData.columns[sourceColumnIndex].name,
+              prompt: transform.prompt || '', // Empty string for direct copy
+              apiKey: transform.prompt ? openAIKey : '' // Only send API key if using AI
+            }),
+          });
+          
+          if (!response.ok) {
+            throw new Error('Transformation failed');
+          }
+          
+          const data = await response.json();
+          transformedValues = data.transformedValues;
+        } catch (error) {
+          console.error('Server transformation error:', error);
+          // Fallback to sample values
+          transformedValues = transform.prompt
+            ? await processWithAI(sourceData.columns[sourceColumnIndex].sampleValues, transform.prompt, openAIKey)
+            : [...sourceData.columns[sourceColumnIndex].sampleValues];
         }
         
         // Store transformed column
@@ -856,6 +896,9 @@ export default function BookmarkFlow({
         sampleValues: targetAnalysis ? 
           // Try to preserve existing sample values for columns that still exist
           targetAnalysis.columns.find(c => c.name === col.name)?.sampleValues || [] : 
+          [],
+        allValues: targetAnalysis ? 
+          targetAnalysis.columns.find(c => c.name === col.name)?.allValues || [] :
           [],
         uniqueValues: targetAnalysis ? 
           targetAnalysis.columns.find(c => c.name === col.name)?.uniqueValues || 0 :
