@@ -30,7 +30,7 @@ export default function TargetFlowNode({ id, data }: TargetNodeProps) {
           <div className="flex items-center gap-1.5">
             <Target size={14} className="text-purple-600" />
             <span className="font-medium text-sm text-purple-900 truncate max-w-[120px]">
-              Target Schema
+              {data.name}
             </span>
           </div>
           <div className="flex items-center">
