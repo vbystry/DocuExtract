@@ -41,12 +41,24 @@ export default function DocumentSource({ fileName, content, onSelect }: Document
           className="w-full p-2 text-xs flex items-center justify-center text-blue-700 hover:bg-blue-200"
           onClick={() => setIsPreviewOpen(!isPreviewOpen)}
         >
-          {isPreviewOpen ? 'Hide Preview' : 'Show Preview'}
+          {isPreviewOpen ? (
+            <span className="flex items-center">
+              <ChevronUp size={14} className="mr-1" />
+              Hide Preview
+            </span>
+          ) : (
+            <span className="flex items-center">
+              <ChevronDown size={14} className="mr-1" />
+              Show Preview
+            </span>
+          )}
         </button>
         
         {isPreviewOpen && (
-          <div className="p-3 bg-white border-t border-blue-200 text-sm whitespace-pre-wrap">
-            {contentPreview}
+          <div className="max-h-[300px] overflow-y-auto">
+            <div className="p-3 bg-white border-t border-blue-200 text-sm whitespace-pre-wrap">
+              {content}
+            </div>
           </div>
         )}
       </div>
